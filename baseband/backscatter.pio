@@ -1,0 +1,105 @@
+;
+; Automatically generated using "generate-backscatter-pio.py"
+; with the command: "python generate-backscatter-pio.py 28 24 100000 backscatter.pio --twoAntennas"
+;
+; Backscatter PIO
+; Configured for two antenns
+;
+
+.program backscatter
+.side_set 1 opt
+
+; --- PIO settings ---
+; configer autopull
+; configered for 125 MHz clock
+
+; --- backscatter settings ---
+; frequency 0 shift: 4.464 MHz       (1 period = 28 cycles @ 125 MHz clock)
+; frequency 1 shift: 5.208 Mhz       (1 period = 24 cycles @ 125 MHz clock)
+; center frequency shift: 4.836 MHz
+; deviation from center : 372.02 kHz
+; baud-rate 100.00 kBaud (1250.0 instructions per symbol)
+; occupied bandwith: 844.05 kHz
+
+
+; parameter 1:  b = clock-frequency/baud-rate (e.g. 1250.0 for 100.00 kBaud @ 125 MHz clock)   // number of clock cycles per symbol
+; parameter 2:  w = 4 (wasted cycles per symbol: OUT -> JMP -> MOV -> ... -> JMP )            // fixed wasted cycles per symbol
+; parameter 3: d0 = clock-frequency/shift-frequency-0 (e.g. 28 for 4.464 MHz @ 125 MHz clock) // must be an _even_ number
+; parameter 4: d1 = clock-frequency/shift-frequency-1 (e.g. 24 for 5.208 Mhz @ 125 MHz clock) // must be an _even_ number
+
+
+; interface: 
+; comment: the parameters have to be obtained from the fifo, since the SET command only provides 5-bit
+; 1. obtain from fifo: floor((b - w) / d0) - 1 // (number of full periods in symbol of frequency 0)
+; 2. obtain from fifo: floor((b - w) / d1) - 1 // (number of full periods in symbol of frequency 1)
+; 3. then simply provide data
+
+SET  pins   1  side 1  ; swtich output off
+OUT   isr  32          ; baud config for frequency 0
+OUT     y  32          ; baud config for frequency 1
+get_symbol:
+    OUT  x  1          ; get data bit
+    JMP !x  send_0     ; jmp if x is zero
+    send_1:
+        MOV x  y                       ; load baud 1 config
+        loop_1:
+            SET pins 1  side 1  [7]    ; for 5208.3 kHz - 12 cycles high
+            SET pins 1  side 1  [3]    ; for 5208.3 kHz - 12 cycles high
+            SET pins 0  side 0  [7]    ; for 5208.3 kHz - 12 cycles low
+            SET pins 0  side 0  [2]    ; for 5208.3 kHz - 12 cycles low
+            JMP x-- loop_1             ; 1 cycle  
+        ; to avoid a drift from imprecise baud-timing: stop the last period on time
+        ; the remaining cycles are:  (b - w) % d1 = (1250 - 4) % 24 => 22 cycles left to spend 
+        SET pins 1  side 1  [7]        ; spend 12 cycles of last period on high
+        SET pins 1  side 1  [3]        ; spend 12 cycles of last period on high
+        SET pins 0  side 0  [7]        ; spend 10 cycles of last period on low
+        SET pins 0  side 0  [1]        ; spend 10 cycles of last period on low
+        JMP get_symbol                 ; 
+    send_0:
+        MOV x isr                      ; load baud 0 config
+        loop_0:
+            SET pins 1  side 1  [7]    ; for 4464.3 kHz - 14 cycles high
+            SET pins 1  side 1  [5]    ; for 4464.3 kHz - 14 cycles high
+            SET pins 0  side 0  [7]    ; for 4464.3 kHz - 14 cycles low
+            SET pins 0  side 0  [4]    ; for 4464.3 kHz - 14 cycles low
+            JMP x-- loop_0             ; 1 cycle  
+        ; to avoid a drift from imprecise baud-timing: stop the last period on time
+        ; the remaining cycles are:  (b - w) % d0 = (1250 - 4) % 28 => 14 cycles left to spend 
+        SET pins 1  side 1  [7]        ; spend 14 cycles of last period on high
+        SET pins 1  side 1  [5]        ; spend 14 cycles of last period on high
+        JMP get_symbol                 ; 
+
+% c-sdk {
+#include "pico/stdlib.h"
+#include "hardware/clocks.h"
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define PIO_BAUDRATE 100000
+#define PIO_CENTER_OFFSET 4836310
+#define PIO_DEVIATION 372024
+#define PIO_MIN_RX_BW 844048
+
+static inline void backscatter_program_init(PIO pio, uint sm, uint offset, uint pin1, uint pin2){
+   pio_gpio_init(pio, pin1);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin1, 1, true);
+   pio_gpio_init(pio, pin2);
+   pio_sm_set_consecutive_pindirs(pio, sm, pin2, 1, true);
+   pio_sm_config c = backscatter_program_get_default_config(offset);
+   sm_config_set_set_pins(&c, pin1, 1);
+   sm_config_set_sideset_pins(&c, pin2);
+   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX); // We only need TX, so get an 8-deep FIFO (join RX and TX FIFO)
+   sm_config_set_out_shift(&c, false, true, 32);  // OUT shifts to left (MSB first), autopull after every 32 bit
+   pio_sm_init(pio, sm, offset, &c);
+   pio_sm_set_enabled(pio, sm, true);
+   pio_sm_put_blocking(pio, sm, 43); // floor((b - w) / d0) - 1 = floor((1250 - 4)/28) - 1   // -1 is requried since JMP 0-- is still true
+   pio_sm_put_blocking(pio, sm, 50); // floor((b - w) / d1) - 1 = floor((1250 - 4)/24) - 1   // -1 is required since JMP 0-- is still true
+}
+
+
+static inline void backscatter_send(PIO pio, uint sm, uint32_t *message, uint32_t len) {
+    for(uint32_t i = 0; i < len; i++){
+        pio_sm_put_blocking(pio, sm, message[i]); // set pin back to low
+    }
+    sleep_ms(1); // wait for transmission to finish
+}
+
+%}
