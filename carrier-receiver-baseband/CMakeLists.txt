@@ -26,7 +26,7 @@ add_executable(carrier_receiver_baseband)
 # however, alternatively you can choose to generate it somewhere else (in this case in the source tree for check in)
 #pico_generate_pio_header(carrier_receiver_baseband ${CMAKE_CURRENT_LIST_DIR}/backscatter.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-target_link_libraries(carrier_receiver_baseband PRIVATE pico_stdlib hardware_pio hardware_spi)
+target_link_libraries(carrier_receiver_baseband PRIVATE pico_stdio_usb pico_stdlib hardware_pio hardware_spi pico_multicore)
 pico_add_extra_outputs(carrier_receiver_baseband)
 
 # stdout: enable usb output, disable uart output
