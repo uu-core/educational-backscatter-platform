@@ -182,11 +182,13 @@ void RX_start_listen(){
     write_register_rx(set);
     write_strobe_rx(SFRX); // clear FIFO
     write_strobe_rx(SRX);  // start listening (enter RX mode with command strobe: SRX)
+    printf("> Started listening.\n");
 }
 
 // stop listening
 void RX_stop_listen(){
     write_strobe_rx(SIDLE); // stop listening (enter IDLE mode with command strobe: SIDLE)
+    printf("> Stopped receiver.\n");
 }
 
 Packet_status readPacket(uint8_t *buffer){
