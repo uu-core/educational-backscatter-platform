@@ -99,6 +99,7 @@ bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instru
 */
 void backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas){
     pio_sm_set_enabled(pio, sm, false); // stop state machine if running
+    pio_clear_instruction_memory(pio);
     // print warning at invalid settings
     if(d0 % 2 != 0){
         printf("WARNING: the clock divider d0 has to be an even integer. The state-machine may not function correctly");

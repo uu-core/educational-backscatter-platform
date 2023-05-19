@@ -1,12 +1,4 @@
 # Pico-Backscatter: receiver-CC2500
-### Update
-We are using a function `stdio_set_chars_available_callback` which was only recently added to the pico-sdk. If the function shall not be defined for you yet, please update the sdk:
-
-```
-$ cd pico-sdk
-$ git pull
-$ git submodule update
-```
 
 ### Decription
 Receiver example using the Mikroe-1435 (CC2500) on the Pico.

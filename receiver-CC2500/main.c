@@ -55,57 +55,78 @@ queue_t command_queue;
 
 void printControlInfo(){
     printf("The configuration can be changed using the following commands:\n   h (print this help message)\n   s (start receiving)\n   t (terminate/stop receiving)\n   c A B C D (configure A=center, B=deviation, C=baud, D=bandswidth all in Hz)\n");
-    printf("The initial configuration is:\n  c %u %u %u %u\n\n", CARRIER_FEQ + PIO_CENTER_OFFSET, PIO_DEVIATION, PIO_BAUDRATE, PIO_MIN_RX_BW);
+    printf("The initial configuration is:\n  c 2456597222 ");  // somehow the macro sum doesn't print here
+    printf("%u ", PIO_DEVIATION);
+    printf("%u ", PIO_BAUDRATE);
+    printf("%u\n\n", PIO_MIN_RX_BW);
 }
 
 static char command[100];
 static int buff_pos = 0;  
 
-void readInput(void* params){
-    /* read input */
-    int input = getchar();
-    if (input == PICO_ERROR_TIMEOUT) {
-        return; 
-    } 
-    if ((input == '\n' || input == '\r' || input == EOF) && buff_pos > 0) {
-        command[buff_pos] = '\0'; 
+void readInput_core1(){
+    while(true){
+        /* read input, parse input and put commands into the command queue */
+        int input = getchar();
+        if ((input == '\n' || input == '\r' || input == EOF) && buff_pos > 0) {
+            command[buff_pos] = '\0'; 
 
-        /* parse input and put to queue */
-        command_struct cmd_event;
-        char cmd;
-        uint32_t  value1, value2, value3, value4;
-        if(sscanf(command, "%c %u %u %u %u", &cmd, &value1, &value2, &value3, &value4) != 5){
-            if(sscanf(command, "%c", &cmd) != 1){
-                cmd_event.cmd = 'e'; // e for invalid input (error)
-                cmd_event.value1 = 0;
-                cmd_event.value2 = 0;
-                cmd_event.value3 = 0;
-                cmd_event.value4 = 0;
-                queue_try_add(&command_queue, &cmd_event);
+            /* parse input and put to queue */
+            command_struct cmd_event;
+            char cmd;
+            uint32_t  value1, value2, value3, value4;
+            if(sscanf(command, "%c %u %u %u %u", &cmd, &value1, &value2, &value3, &value4) != 5){
+                if(sscanf(command, "%c", &cmd) != 1){
+                    cmd_event.cmd = 'e'; // e for invalid input (error)
+                    cmd_event.value1 = 0;
+                    cmd_event.value2 = 0;
+                    cmd_event.value3 = 0;
+                    cmd_event.value4 = 0;
+                    queue_try_add(&command_queue, &cmd_event);
+                }else{
+                    switch (cmd){
+                        case 'h':
+                            cmd_event.cmd = 'h';
+                            cmd_event.value1 = 0;
+                            cmd_event.value2 = 0;
+                            cmd_event.value3 = 0;
+                            cmd_event.value4 = 0;
+                            queue_try_add(&command_queue, &cmd_event);
+                            break;
+                        case 's':
+                            cmd_event.cmd = 's';
+                            cmd_event.value1 = 0;
+                            cmd_event.value2 = 0;
+                            cmd_event.value3 = 0;
+                            cmd_event.value4 = 0;
+                            queue_try_add(&command_queue, &cmd_event);
+                            break;
+                        case 't':
+                            cmd_event.cmd = 't';
+                            cmd_event.value1 = 0;
+                            cmd_event.value2 = 0;
+                            cmd_event.value3 = 0;
+                            cmd_event.value4 = 0;
+                            queue_try_add(&command_queue, &cmd_event);
+                            break;
+                        default:
+                            cmd_event.cmd = 'e'; // e for invalid input (error)
+                            cmd_event.value1 = 0;
+                            cmd_event.value2 = 0;
+                            cmd_event.value3 = 0;
+                            cmd_event.value4 = 0;
+                            queue_try_add(&command_queue, &cmd_event);
+                            break;
+                    }
+                }
             }else{
                 switch (cmd){
-                    case 'h':
-                        cmd_event.cmd = 'h';
-                        cmd_event.value1 = 0;
-                        cmd_event.value2 = 0;
-                        cmd_event.value3 = 0;
-                        cmd_event.value4 = 0;
-                        queue_try_add(&command_queue, &cmd_event);
-                        break;
-                    case 's':
-                        cmd_event.cmd = 's';
-                        cmd_event.value1 = 0;
-                        cmd_event.value2 = 0;
-                        cmd_event.value3 = 0;
-                        cmd_event.value4 = 0;
-                        queue_try_add(&command_queue, &cmd_event);
-                        break;
-                    case 't':
-                        cmd_event.cmd = 't';
-                        cmd_event.value1 = 0;
-                        cmd_event.value2 = 0;
-                        cmd_event.value3 = 0;
-                        cmd_event.value4 = 0;
+                    case 'c':
+                        cmd_event.cmd = 'c';
+                        cmd_event.value1 = value1;
+                        cmd_event.value2 = value2;
+                        cmd_event.value3 = value3;
+                        cmd_event.value4 = value4;
                         queue_try_add(&command_queue, &cmd_event);
                         break;
                     default:
@@ -118,36 +139,12 @@ void readInput(void* params){
                         break;
                 }
             }
-        }else{
-            switch (cmd){
-                case 'c':
-                    cmd_event.cmd = 'c';
-                    cmd_event.value1 = value1;
-                    cmd_event.value2 = value2;
-                    cmd_event.value3 = value3;
-                    cmd_event.value4 = value4;
-                    queue_try_add(&command_queue, &cmd_event);
-                    break;
-                default:
-                    cmd_event.cmd = 'e'; // e for invalid input (error)
-                    cmd_event.value1 = 0;
-                    cmd_event.value2 = 0;
-                    cmd_event.value3 = 0;
-                    cmd_event.value4 = 0;
-                    queue_try_add(&command_queue, &cmd_event);
-                    break;
-            }
+            buff_pos = 0; 
+        } else {
+            command[buff_pos] = (char) input; 
+            buff_pos++; 
         }
-        buff_pos = 0; 
-    } else {
-        command[buff_pos] = (char) input; 
-        buff_pos++; 
     }
-}
-
-void core_1() 
-{
-    while(1) readInput(NULL); 
 }
 
 void do_commands(){
@@ -187,12 +184,11 @@ void do_commands(){
 void main() {
     // stdio init
     stdio_init_all();
-    // Setup USB input callback
+    // Setup USB input on second core
     queue_init(&command_queue, sizeof(command_struct), COMMAND_QUEUE_LENGTH); /* command queue setup */
-    while(queue_try_remove(&command_queue, NULL));                         /* Reset the queue     */
-    //stdio_set_chars_available_callback(&readInput,NULL);                   /* Configure callback  */
+    while(queue_try_remove(&command_queue, NULL));                            /* Reset the queue     */
     multicore_reset_core1(); 
-    multicore_launch_core1(core_1); 
+    multicore_launch_core1(readInput_core1); 
 
     // setup SPI
     spi_init(RADIO_SPI, 5 * 1000000); // SPI0 at 5MHz.
@@ -222,12 +218,9 @@ void main() {
     set_filter_bandwidth_rx(PIO_MIN_RX_BW);
     sleep_ms(1);
     RX_start_listen();
-    
-    printf("The receiver is setup and started for:\n  - %u MHz center frequency\n  - %u Hz deviation\n  - %u Baud\n  - %u Hz bandwidth\n", (CARRIER_FEQ + PIO_CENTER_OFFSET)/1000000, PIO_DEVIATION, PIO_BAUDRATE, PIO_MIN_RX_BW);
     printControlInfo();
 
     while (true) {
-        printf("loop working\n");
         do_commands();
         evt = get_event();
         switch(evt){
@@ -244,7 +237,7 @@ void main() {
             case no_evt:
             break;
         }
-        sleep_ms(1000);
+        sleep_us(10);
     }
     RX_stop_listen(); // never reached
 }
