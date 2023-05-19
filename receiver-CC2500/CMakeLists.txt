@@ -22,7 +22,7 @@ pico_sdk_init()
 add_executable(receiver_CC2500)
 
 # pull in common dependencies and additional spi hardware support
-target_link_libraries(receiver_CC2500 pico_stdio_usb pico_stdlib hardware_spi)
+target_link_libraries(receiver_CC2500 pico_stdio_usb pico_stdlib hardware_spi pico_multicore)
 
 # stdout: enable usb output, disable uart output
 pico_enable_stdio_usb(receiver_CC2500 1)
