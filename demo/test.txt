@@ -1,0 +1,11 @@
+start listening
+00:00:00.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -62 CRC error 
+00:00:01.000 | 0f 01 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error 
+00:00:02.000 | 0f 02 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error 
+00:00:03.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:04.000 | 0f 00 1f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:05.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:06.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:07.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:08.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
+00:00:09.000 | 0f 00 2f c2 39 44 d3 16 7d b8 b7 aa 01 6c db 7e | -61 CRC error
