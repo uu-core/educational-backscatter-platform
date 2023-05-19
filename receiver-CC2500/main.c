@@ -57,12 +57,11 @@ void printControlInfo(){
 }
 
 void readInput(void* params){
-    printf("reached callback");
     int input, n=0; // only convert to char after EOF test
     char command[100];
 
     /* read input */
-    while ((input = getchar()) != EOF) {
+    while ((input = getchar()) != '\n') {
         if(n < 100){
             command[n] = input;
             n++;
@@ -74,7 +73,12 @@ void readInput(void* params){
     uint32_t  value1, value2, value3, value4;
     if(sscanf(command, "%c %u %u %u %u", &cmd, &value1, &value2, &value3, &value4) != 5){
         if(sscanf(command, "%c", &cmd) != 1){
-            printf("Invalid input format.\n");
+            cmd_event.cmd = 'e'; // e for invalid input (error)
+            cmd_event.value1 = 0;
+            cmd_event.value2 = 0;
+            cmd_event.value3 = 0;
+            cmd_event.value4 = 0;
+            queue_try_add(&command_queue, &cmd_event);
         }else{
             switch (cmd){
                 case 'h':
@@ -84,7 +88,6 @@ void readInput(void* params){
                     cmd_event.value3 = 0;
                     cmd_event.value4 = 0;
                     queue_try_add(&command_queue, &cmd_event);
-                    break;
                     break;
                 case 's':
                     cmd_event.cmd = 's';
@@ -103,7 +106,12 @@ void readInput(void* params){
                     queue_try_add(&command_queue, &cmd_event);
                     break;
                 default:
-                    printf("Invalid command. Use 'h' for input information.\n");
+                    cmd_event.cmd = 'e'; // e for invalid input (error)
+                    cmd_event.value1 = 0;
+                    cmd_event.value2 = 0;
+                    cmd_event.value3 = 0;
+                    cmd_event.value4 = 0;
+                    queue_try_add(&command_queue, &cmd_event);
                     break;
             }
         }
@@ -118,7 +126,12 @@ void readInput(void* params){
                 queue_try_add(&command_queue, &cmd_event);
                 break;
             default:
-                printf("Invalid command. Use 'h' for input information.\n");
+                cmd_event.cmd = 'e'; // e for invalid input (error)
+                cmd_event.value1 = 0;
+                cmd_event.value2 = 0;
+                cmd_event.value3 = 0;
+                cmd_event.value4 = 0;
+                queue_try_add(&command_queue, &cmd_event);
                 break;
         }
     }
@@ -129,6 +142,9 @@ void do_commands(){
         command_struct cmd_event;
         if (queue_try_remove(&command_queue,&cmd_event)){
             switch (cmd_event.cmd){
+                case 'e':
+                    printf("The input was invalid. Enter 'h' for further information on the interface.\n");
+                    break;
                 case 'h':
                     printControlInfo();
                     break;
@@ -161,7 +177,7 @@ void main() {
     // Setup USB input callback
     queue_init(&command_queue, sizeof(command_struct), COMMAND_QUEUE_LENGTH); /* command queue setup */
     while(queue_try_remove(&command_queue, NULL));                         /* Reset the queue     */
-    stdio_set_chars_available_callback((void *) &readInput,NULL);                   /* Configure callback  */
+    stdio_set_chars_available_callback(&readInput,NULL);                   /* Configure callback  */
 
     // setup SPI
     spi_init(RADIO_SPI, 5 * 1000000); // SPI0 at 5MHz.
