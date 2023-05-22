@@ -8,6 +8,16 @@ This file is part of the MobiSys'23 Educational Backscatter Board Demo
 For the receiver board, read received data from CC2500 via serial port, compute and update the BER in real time
 '''
 
+'''
+Todo:
+plotting: x axis to the timestamp
+auto discard the old data after a period of time
+
+BER calculation
+add the seq number
+consider the bit error in length field
+'''
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -15,22 +25,22 @@ import numpy as np
 import pandas as pd
 import datetime
 import re
-import random
+import serial
 
-global UPDATE_TIME, TX_RATE, PACKET_LEN, REF_PAYLOAD, PORT
-UPDATE_TIME = 1 # unit is second
-TX_RATE = 1 # every x second transmitter a packet is sent
-PACKET_LEN = 32 # the payload length in bytes
-REF_PAYLOAD = [15, 0, 47, 194, 57, 68, 211, 22, 125, 184, 183, 170, 1, 108, 219, 126] # the fixed payload content in decimal as a list
-PORT = '/dev/ttyusb0'
+global UPDATE_TIME, TX_RATE, PACKET_LEN, PORT
+UPDATE_TIME = 10 # unit is second
+TX_RATE = 0.3 # every x second transmitter a packet is sent
+PACKET_LEN = 15 # the payload length in bytes
+PORT = '/dev/tty.usbmodem2101'
+REF_PAYLOAD = [16] + [0xa5]*PACKET_LEN
 
-ber_history = [0]
-timeline  = [0]
+ber_history = []
+timeline  = []
 
 delta = datetime.timedelta(seconds=UPDATE_TIME)
 
 def validation_check(input_string):
-    print_template = '\d{2}:\d{2}:\d{2}.\d{3}\s\|\s([0-9a-f]{2}\s){' + str(int(PACKET_LEN/2)) + '}\|\s-\d{2}\sCRC error'
+    print_template = '\d{2}:\d{2}:\d{2}.\d{3}\s\|\s([0-9a-f]{2}\s){' + str(int(PACKET_LEN)) + '}\|\s-\d{2}\sCRC error'
     regex = re.compile(print_template, re.I)
     match = regex.match(str(input_string))
     return bool(match)
@@ -75,49 +85,50 @@ def compute_ber(df, PACKET_LEN=32, TX_RATE=1, REF_PAYLOAD=[47, 194, 57, 68, 211,
     # total bit error counter initialization
     counter = sum(error.bit_error)
     counter += n_missing * PACKET_LEN * 8
-    # print(file_delay, n_sent, n_missing, packets)
-    # print(counter, file_size)
 
     return counter / file_size, error
 
 def update(frame):
-    df = pd.DataFrame(columns=['timestamp', 'payload', 'rss'])
-    t_end = datetime.datetime.now() + delta
-    # # open the port and read the serial output to dataframe
-    # with serial.Serial(port, 115200)  as ser:
-    #     while datetime.datetime.now() < t_end:
-    #         rec = ser.read().decode("utf-8")
-    #         if validation_check(line):
-    #             tmp = line.split('|')
-    #             time = datetime.datetime.strptime(tmp[0].rstrip(), "%H:%M:%S.%f")
-    #             payload = tmp[1].strip()
-    #             rss = int(tmp[2].split()[0])
-    #             df = df.append({'timestamp': time, 'payload': payload, 'rss': rss}, ignore_index=True)
-
-    # read from a file
-    with open('./test.txt', 'r') as f:
-        reader = f.readlines()
-        for line in reader:
-            if validation_check(line):
-                tmp = line.split('|')
+    # open the port
+    with serial.Serial(PORT, 115200) as ser:
+        df = pd.DataFrame(columns=['timestamp', 'payload', 'rss'])
+        t_end = datetime.datetime.now() + delta
+        # config the receiver clicker board the serial port
+        config = pd.read_excel('config.xlsx')
+        command = f"c {config.center[0]} {config.deviation[0]} {config.baud[0]} {config.bandwidth[0]}\r"
+        ser.write(command.encode('utf-8'))
+        # read the serial output
+        while datetime.datetime.now() < t_end:
+            rec = ser.readline().decode("utf-8")
+            print(rec)
+            if validation_check(rec):
+                tmp = rec.split('|')
                 time = datetime.datetime.strptime(tmp[0].rstrip(), "%H:%M:%S.%f")
                 payload = tmp[1].strip()
                 rss = int(tmp[2].split()[0])
                 df = df.append({'timestamp': time, 'payload': payload, 'rss': rss}, ignore_index=True)
-    print(df)
-    file_ber, error = compute_ber(df, PACKET_LEN, TX_RATE, REF_PAYLOAD)
-    file_ber += random.random()
-    print(file_ber)
+        # stop the reception
+        ser.write("t\r".encode('utf-8'))
+
+    # analyse the received data
+    if len(df) >= 1:
+        file_ber, error = compute_ber(df, PACKET_LEN, TX_RATE, REF_PAYLOAD)
+        print(file_ber)
+    else:
+        file_ber = 1
+    # update the figure
     ber_history.append(file_ber)
-    timeline.append(timeline[-1] + 1)
+    timeline.append(t_end)
     ln.set_data(timeline, ber_history)
     fig.gca().relim()
     fig.gca().autoscale_view()
     return ln
 
+
+# the main fuction
 fig = plt.figure(figsize=(6, 3))
-#creating a subplot
 ax = fig.add_subplot(1,1,1)
+# configure the figure display
 ax.grid()
 ax.set_xlabel('Time', fontsize=16)
 ax.set_ylabel('Bit Error Rate [%]', fontsize=16)
