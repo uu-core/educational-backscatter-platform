@@ -14,6 +14,7 @@
 #include <math.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "pico/sync.h"
 #include "pico/multicore.h" 
 
 #include "pico/util/queue.h"
@@ -23,6 +24,7 @@
 
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
+#include "command_receiver.h"
 #include "backscatter.h"
 #include "carrier_CC2500.h"
 #include "receiver_CC2500.h"
@@ -34,7 +36,7 @@
 #define RADIO_MOSI              19
 #define RADIO_SCK               18
 
-#define TX_DURATION            250 // send a packet every 250ms (when changing baud-rate, ensure that the TX delay is larger than the transmission time)
+#define TX_DURATION            500 // send a packet every 250ms (when changing baud-rate, ensure that the TX delay is larger than the transmission time)
 #define RECEIVER              2500 // define the receiver board either 2500 or 1352
 #define PIN_TX1                  6
 #define PIN_TX2                 27
@@ -46,145 +48,20 @@
 #define CARRIER_FEQ     2450000000
 
 /* Event queue for commands (start/stop uses zero values) */
-# define COMMAND_QUEUE_LENGTH 10
-struct cmd_struct {
-  char cmd;
-  uint32_t  value1;
-  uint32_t  value2;
-  uint32_t  value3;
-  uint32_t  value4;
-};
-typedef struct cmd_struct command_struct;
-queue_t command_queue;
 
 /* just for the printout below. not actually used*/
 #define PIO_BAUDRATE 100000
 #define PIO_CENTER_OFFSET 6597222
 #define PIO_DEVIATION 347222
 #define PIO_MIN_RX_BW 794444
-void printControlInfo(){
-    printf("The configuration can be changed using the following commands:\n   h (print this help message)\n   s (start receiving)\n   t (terminate/stop receiving)\n   c A B C D (configure receiver A=center, B=deviation, C=baud, D=bandswidth all in Hz)\n   b A B C (configure backscatter A=divider1, B=divider2, C=baud)\n\n");
-    printf("The initial configuration is:\n  c 2456597222 "); // somehow the macro sum doesn't print here
-    printf("%u ", PIO_DEVIATION);
-    printf("%u ", PIO_BAUDRATE);
-    printf("%u\n\n", PIO_MIN_RX_BW);
-    printf("The initial backscatter configuration is:\n  b %u ", CLOCK_DIV0);
-    printf("%u ", CLOCK_DIV1);
-    printf("%u\n\n", DESIRED_BAUD);
-    printf("The backscattering runs continously about every %u ms.\n\n", TX_DURATION);
-}
 
-static char command[100];
-static int buff_pos = 0;  
-
-void readInput_core1(){
-    while(true){
-        /* read input, parse input and put commands into the command queue */
-        int input = getchar();
-        if ((input == '\n' || input == '\r' || input == EOF) && buff_pos > 0) {
-            command[buff_pos] = '\0'; 
-
-            /* parse input and put to queue */
-            command_struct cmd_event;
-            char cmd;
-            uint32_t  value1, value2, value3, value4;
-            if(sscanf(command, "%c %u %u %u %u", &cmd, &value1, &value2, &value3, &value4) != 5){
-                if(sscanf(command, "%c %u %u %u", &cmd, &value1, &value2, &value3) != 4){
-                    if(sscanf(command, "%c", &cmd) != 1){
-                        cmd_event.cmd = 'e'; // e for invalid input (error)
-                        cmd_event.value1 = 0;
-                        cmd_event.value2 = 0;
-                        cmd_event.value3 = 0;
-                        cmd_event.value4 = 0;
-                        queue_try_add(&command_queue, &cmd_event);
-                    }else{
-                        switch (cmd){
-                            case 'h':
-                                cmd_event.cmd = 'h';
-                                cmd_event.value1 = 0;
-                                cmd_event.value2 = 0;
-                                cmd_event.value3 = 0;
-                                cmd_event.value4 = 0;
-                                queue_try_add(&command_queue, &cmd_event);
-                                break;
-                            case 's':
-                                cmd_event.cmd = 's';
-                                cmd_event.value1 = 0;
-                                cmd_event.value2 = 0;
-                                cmd_event.value3 = 0;
-                                cmd_event.value4 = 0;
-                                queue_try_add(&command_queue, &cmd_event);
-                                break;
-                            case 't':
-                                cmd_event.cmd = 't';
-                                cmd_event.value1 = 0;
-                                cmd_event.value2 = 0;
-                                cmd_event.value3 = 0;
-                                cmd_event.value4 = 0;
-                                queue_try_add(&command_queue, &cmd_event);
-                                break;
-                            default:
-                                cmd_event.cmd = 'e'; // e for invalid input (error)
-                                cmd_event.value1 = 0;
-                                cmd_event.value2 = 0;
-                                cmd_event.value3 = 0;
-                                cmd_event.value4 = 0;
-                                queue_try_add(&command_queue, &cmd_event);
-                                break;
-                        }
-                    }
-                }else{
-                    switch (cmd){
-                        case 'b':
-                            cmd_event.cmd = 'b';
-                            cmd_event.value1 = value1;
-                            cmd_event.value2 = value2;
-                            cmd_event.value3 = value3;
-                            cmd_event.value4 = 0;
-                            queue_try_add(&command_queue, &cmd_event);
-                            break;
-                        default:
-                            cmd_event.cmd = 'e'; // e for invalid input (error)
-                            cmd_event.value1 = 0;
-                            cmd_event.value2 = 0;
-                            cmd_event.value3 = 0;
-                            cmd_event.value4 = 0;
-                            queue_try_add(&command_queue, &cmd_event);
-                            break;
-                    }
-                }
-            }else{
-                switch (cmd){
-                    case 'c':
-                        cmd_event.cmd = 'c';
-                        cmd_event.value1 = value1;
-                        cmd_event.value2 = value2;
-                        cmd_event.value3 = value3;
-                        cmd_event.value4 = value4;
-                        queue_try_add(&command_queue, &cmd_event);
-                        break;
-                    default:
-                        cmd_event.cmd = 'e'; // e for invalid input (error)
-                        cmd_event.value1 = 0;
-                        cmd_event.value2 = 0;
-                        cmd_event.value3 = 0;
-                        cmd_event.value4 = 0;
-                        queue_try_add(&command_queue, &cmd_event);
-                        break;
-                }
-            }
-            buff_pos = 0; 
-        } else {
-            command[buff_pos] = (char) input; 
-            buff_pos++; 
-        }
-    }
-}
+uint32_t current_CENTER, current_DEVIATION, current_BAUDRATE, current_MIN_RX_BW, current_DIV0, current_DIV1, current_BAUD, current_DURATION;
+mutex_t setting_mutex;
 
 void do_commands(){
     command_struct cmd_event;
-    if(!queue_is_empty(&command_queue)){
-        if (queue_try_remove(&command_queue,&cmd_event)){
+    if(queued_command()){
+        if (get_command(&cmd_event)){
             switch (cmd_event.cmd){
                 case 'e':
                     printf("The input was invalid. Enter 'h' for further information on the interface.\n");
@@ -201,6 +78,12 @@ void do_commands(){
                 case 'c':
                     RX_stop_listen();
                     setupReceiver();
+                    mutex_enter_blocking(&setting_mutex);
+                    current_CENTER=cmd_event.value1;
+                    current_DEVIATION=cmd_event.value2;
+                    current_BAUDRATE=cmd_event.value3;
+                    current_MIN_RX_BW=cmd_event.value4;
+                    mutex_exit(&setting_mutex);
                     set_frecuency_rx(cmd_event.value1);
                     set_frequency_deviation_rx(cmd_event.value2);
                     set_datarate_rx(cmd_event.value3);
@@ -209,6 +92,11 @@ void do_commands(){
                     break;
                 case 'b':
                     printf("Changing pio-state machine...\n");
+                    mutex_enter_blocking(&setting_mutex);
+                    current_DIV0 = cmd_event.value1;
+                    current_DIV1 = cmd_event.value2;
+                    current_BAUD = cmd_event.value3;
+                    mutex_exit(&setting_mutex);
                     PIO pio = pio0;
                     uint sm = 0;
                     struct backscatter_config backscatter_conf;
@@ -227,8 +115,17 @@ int main() {
     /* setup SPI */
     stdio_init_all();
     // Setup USB input on second core
-    queue_init(&command_queue, sizeof(command_struct), COMMAND_QUEUE_LENGTH); /* command queue setup */
-    while(queue_try_remove(&command_queue, NULL));                            /* Reset the queue     */
+    mutex_init(&setting_mutex);
+    mutex_enter_blocking(&setting_mutex);
+    current_CENTER = CARRIER_FEQ + PIO_CENTER_OFFSET;
+    current_DEVIATION = PIO_DEVIATION;
+    current_BAUDRATE = PIO_BAUDRATE;
+    current_MIN_RX_BW = PIO_MIN_RX_BW;
+    current_DIV0 = CLOCK_DIV0;
+    current_DIV1 = CLOCK_DIV1;
+    current_BAUD = PIO_BAUDRATE;
+    current_DURATION = TX_DURATION;
+    mutex_exit(&setting_mutex);
     multicore_reset_core1(); 
     multicore_launch_core1(readInput_core1); 
 
@@ -290,7 +187,13 @@ int main() {
     printControlInfo();
 
     /* loop */
+    absolute_time_t next_release_1 = delayed_by_ms(get_absolute_time(), TX_DURATION);
+    absolute_time_t next_release_2 = delayed_by_ms(next_release_1, TX_DURATION);
     while (true) {
+        while(absolute_time_diff_us(get_absolute_time(), next_release_1));
+        next_release_1 = next_release_2;
+        next_release_2 = delayed_by_ms(next_release_1, TX_DURATION);
+
         do_commands();
         evt = get_event();
         switch(evt){
@@ -310,10 +213,13 @@ int main() {
                 // backscatter new packet if receiver is listening
                 if (rx_ready){
                     /* generate new data */
-                    generate_data(tx_payload_buffer, PAYLOADSIZE, true);
+                    // generate_data(tx_payload_buffer, PAYLOADSIZE, true);
+                    for(uint8_t i = 0; i < PAYLOADSIZE; i++){
+                        tx_payload_buffer[i] = 0xA5;                                    // FOR DEMO: fixed payload of 0xA5
+                    }
 
                     /* add header (10 byte) to packet */
-                    add_header(&message[0], seq, header_tmplate);
+                    add_header(&message[0], 0xA5, header_tmplate);                      // FOR DEMO: fixed sequence number of 0xA5
                     /* add payload to packet */
                     memcpy(&message[HEADER_LEN], tx_payload_buffer, PAYLOADSIZE);
 
@@ -330,10 +236,8 @@ int main() {
                     /* increase seq number*/ 
                     seq++;
                 }
-                sleep_ms(TX_DURATION);
             break;
         }
-        sleep_ms(1);
     }
 
     /* stop carrier and receiver - never reached */
