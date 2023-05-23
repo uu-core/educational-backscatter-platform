@@ -26,16 +26,15 @@ import serial
 from functools import partial
 import random
 
-global UPDATE_TIME, TX_RATE, PACKET_LEN, PORT
+global UPDATE_TIME, TX_RATE, PORT
 UPDATE_TIME = 1 # unit is second
-TX_RATE = 0.3 # every x second transmitter a packet is sent
 PACKET_LEN = 15 # the payload length in bytes
-PORT = '/dev/tty.usbmodem1101'
-REF_PAYLOAD = [PACKET_LEN] + [0xa5]*PACKET_LEN
+PORT = '/dev/tty.usbmodem101'
+REF_PAYLOAD = [0xa5]
 delta = datetime.timedelta(seconds=UPDATE_TIME)
 
 def validation_check(input_string):
-    print_template = '\d{2}:\d{2}:\d{2}.\d{3}\s\|\s([0-9a-f]{2}\s){' + str(int(PACKET_LEN+1)) + '}\|\s-\d{2}\sCRC error'
+    print_template = '\d{2}:\d{2}:\d{2}.\d{3}\s\|\s([0-9a-f]{2}\s){1,256}\|\s-\d{2}\sCRC error'
     regex = re.compile(print_template, re.I)
     match = regex.match(str(input_string))
     return bool(match)
@@ -58,30 +57,42 @@ def parse_payload(payload_string):
     tmp = map(lambda x: int(x, base=16), payload_string.split())
     return list(tmp)
 
-def compute_ber(df, PACKET_LEN=32, TX_RATE=1, REF_PAYLOAD=[16] + [0xa5]*PACKET_LEN):
+def compute_ber(df, PACKET_LEN=15, REF_PAYLOAD=[0xa5]):
     packets = len(df)
+    first_seq = parse_payload(df.payload[0])[1]
+    last_seq = parse_payload(df.payload[packets-1])[1]
+    file_size = (last_seq-first_seq+1) * (PACKET_LEN-1) * 8
     # dataframe records the bit error for each packet
-    error = pd.DataFrame(columns=['bit_error'], index=range(packets))
-    # compute the number of packets supposed to been transmitted by the tag
-    file_delay = df.timestamp[packets-1] - df.timestamp[0]
-    file_delay = np.timedelta64(file_delay, "ms").astype(int) / 1000 # convert to seconds
-    n_sent = file_delay * TX_RATE + 1
-    # compute the number of missing packets
-    n_missing = n_sent - packets
-    # the file size
-    file_size = n_sent * PACKET_LEN * 8
+    error = pd.DataFrame(columns=['bit_error'], index=range(first_seq, last_seq+1))
+    # bit_errors list initialization
+    error.bit_error = [list() for x in range(len(error))]
 
     # start count the error bits
     for idx in range(packets):
         # parse the payload to a list
         payload = parse_payload(df.payload[idx])
-        error.bit_error[idx] = compute_bit_errors(payload, REF_PAYLOAD, PACKET_LEN)
+        # deal with packet length error
+        if payload[0] >= (PACKET_LEN):
+            payload = payload[:PACKET_LEN+1]
+        else:
+            payload = payload + [0]*(PACKET_LEN-payload[0])
+        ## dealing with missing packet
+        error.bit_error[payload[1]].append(compute_bit_errors(payload[2:], REF_PAYLOAD * (PACKET_LEN-1), PACKET_LEN-1))
 
     # total bit error counter initialization
-    counter = sum(error.bit_error)
-    counter += n_missing * PACKET_LEN * 8
-
+    counter = 0
+    n_missing = 0
+    for l in error.bit_error:
+        if l == []:
+            n_missing += 1
+        elif len(l) > 1:
+            n_missing -= 1
+        else:
+            tmp =  min(l)
+        counter += sum(l)
+    counter += n_missing * (PACKET_LEN-1)
     return counter / file_size, error
+
 
 def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
     # open the port
@@ -109,7 +120,7 @@ def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
 
     # analyse the received data
     if len(df) >= 1:
-        file_ber, error = compute_ber(df, PACKET_LEN, TX_RATE, REF_PAYLOAD)
+        file_ber, error = compute_ber(df, PACKET_LEN, REF_PAYLOAD)
         print(file_ber)
     else:
         file_ber = 1
@@ -141,12 +152,11 @@ def update_test(frame, fig, art, timeline, ber_history, start_timestamp):
                 rss = int(tmp[2].split()[0])
                 df = df.append({'timestamp': time, 'payload': payload, 'rss': rss}, ignore_index=True)
     print(df)
-    file_ber, error = compute_ber(df, PACKET_LEN, TX_RATE, REF_PAYLOAD)
-    file_ber += random.random()
-    print(file_ber)
+    file_ber, error = compute_ber(df, PACKET_LEN, REF_PAYLOAD)
+    # file_ber += random.random()
     ber_history.append(file_ber)
     time_delta = t_end-start_timestamp
-    print(time_delta.seconds)
+    print(f"Timestamp:{time_delta.seconds}s, BER:{file_ber*100:.2f}%\n")
     timeline.append(time_delta.seconds)
     # only show last N data points
     if len(timeline) > 10:
@@ -161,20 +171,20 @@ def update_test(frame, fig, art, timeline, ber_history, start_timestamp):
 def main():
     ber_history = []
     timeline  = []
-    # with serial.Serial(PORT, 115200) as ser:
-    fig = plt.figure(figsize=(6, 3))
-    ax = fig.add_subplot(1,1,1)
-    # configure the figure display
-    ax.grid()
-    ax.set_xlabel('Time [s]', fontsize=16)
-    ax.set_ylabel('Bit Error Rate [%]', fontsize=16)
-    ax.set_title('Real-time System Performance', fontsize=22)
-    ax.tick_params(labelsize=13)
+    with serial.Serial(PORT, 115200) as ser:
+        fig = plt.figure(figsize=(6, 3))
+        ax = fig.add_subplot(1,1,1)
+        # configure the figure display
+        ax.grid()
+        ax.set_xlabel('Time [s]', fontsize=16)
+        ax.set_ylabel('Bit Error Rate [%]', fontsize=16)
+        ax.set_title('Real-time System Performance', fontsize=22)
+        ax.tick_params(labelsize=13)
 
-    ln, = plt.plot(timeline, ber_history, marker='o', markersize=6, color='black')
-    start_timestamp = datetime.datetime.now()
-    # animation = FuncAnimation(fig, partial(update, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, ser=ser, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 1000))
-    animation = FuncAnimation(fig, partial(update_test, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 1000))
+        ln, = plt.plot(timeline, ber_history, marker='o', markersize=6, color='black')
+        start_timestamp = datetime.datetime.now()
+        animation = FuncAnimation(fig, partial(update, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, ser=ser, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 1000))
+    # animation = FuncAnimation(fig, partial(update_test, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 1000))
     plt.show()
 
 if __name__ == '__main__':
