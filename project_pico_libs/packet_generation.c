@@ -44,6 +44,7 @@ uint32_t rnd() {
 /* 
  * generate compressible payload sample
  * file_position provides the index of the next data byte (increments by 2 each time the function is called)
+ * Hint for compression: view the data distribution (this function implememnts a Box-Muller Transform)
  */
 uint16_t file_position = 0;
 uint16_t generate_sample(){
