@@ -254,7 +254,7 @@ event_t get_event(void)
     return no_evt;
 }
 
-void set_datarate_rx(uint32_t r_data)
+uint32_t set_datarate_rx(uint32_t r_data)
 {
     write_strobe_rx(SIDLE); // ensure IDLE mode with command strobe: SIDLE
     
@@ -273,9 +273,10 @@ void set_datarate_rx(uint32_t r_data)
         {.address = 0x11, .value = drate_m}
     };
     write_registers_rx(set,2);
+    return r_data_calculated;
 }
 
-void set_filter_bandwidth_rx(uint32_t bw)
+uint32_t set_filter_bandwidth_rx(uint32_t bw)
 {
     write_strobe_rx(SIDLE); // ensure IDLE mode with command strobe: SIDLE
 
@@ -291,9 +292,10 @@ void set_filter_bandwidth_rx(uint32_t bw)
     RF_setting mdmcfg3 = read_register_rx(0x10);
     RF_setting set = (RF_setting){.address = 0x10, .value = ((chanbw_e & 0x03) << 6) + ((chanbw_m & 0x03) << 4) + (mdmcfg3.value & 0x0f)};
     write_register_rx(set);
+    return bw_calculated;
 }
 
-void set_frequency_deviation_rx(uint32_t f_dev)
+uint32_t set_frequency_deviation_rx(uint32_t f_dev)
 {
     write_strobe_rx(SIDLE); // ensure IDLE mode with command strobe: SIDLE
 
@@ -308,9 +310,10 @@ void set_frequency_deviation_rx(uint32_t f_dev)
     // DEVIATN
     RF_setting set = {.address = 0x15, .value = ((deviation_e & 0x07) << 4) + (deviation_m & 0x07)};
     write_register_rx(set);
+    return f_dev_calculated;
 }
 
-void set_frecuency_rx(uint32_t f_carrier)
+uint32_t set_frecuency_rx(uint32_t f_carrier)
 {
 // Test read_register_rx
 //    RF_setting a = {.address = 0x13, .value = 0xab};
@@ -342,4 +345,5 @@ void set_frecuency_rx(uint32_t f_carrier)
     };
     //printf("debug %02x %02x %02x %02x %02x %02x\n", set[0].value, set[1].value, set[2].value, set[3].value, set[4].value, set[5].value);
     write_registers_rx(set,6);
+    return f_carrier_calculated;
 }

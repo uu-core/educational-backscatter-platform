@@ -56,6 +56,6 @@ int16_t repeat(uint16_t* instructionBuffer, int16_t delay, uint32_t asm_instr, u
 bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instructionBuffer, struct pio_program *backscatter_program, bool twoAntennas);
 
 /* based on d0/d1/baud, the modulation parameters will be computed and returned in the struct backscatter_config */
-void backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas);
+bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas);
 
 void backscatter_send(PIO pio, uint sm, uint32_t *message, uint32_t len);

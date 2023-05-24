@@ -237,7 +237,6 @@ void main() {
             case no_evt:
             break;
         }
-        sleep_us(10);
     }
     RX_stop_listen(); // never reached
 }

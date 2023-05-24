@@ -97,7 +97,7 @@ bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instru
     - based on d0/d1/baud, the modulation parameters will be computed and returned in the struct backscatter_config 
     - pin2 is ignored if twoAntennas==false
 */
-void backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas){
+bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas){
     pio_sm_set_enabled(pio, sm, false); // stop state machine if running
     pio_clear_instruction_memory(pio);
     // print warning at invalid settings
@@ -115,7 +115,10 @@ void backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d
     }
     // generate pio-program
     struct pio_program backscatter_program;
-    generatePIOprogram(d0,d1,baud, instructionBuffer, &backscatter_program, twoAntennas);
+
+    if(!generatePIOprogram(d0,d1,baud, instructionBuffer, &backscatter_program, twoAntennas)){
+        return false;
+    };
     uint offset = 0;
     pio_add_program_at_offset(pio, &backscatter_program, offset); // load program
     /* print state-machine instructions */
@@ -167,6 +170,7 @@ void backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d
     }
 
     printf("Computed baseband settings: \n- baudrate: %d\n- Center offset: %d\n- deviation: %d\n- RX Bandwidth: %d\n", config->baudrate, config->center_offset, config->deviation, config->minRxBw);
+    return true;
 }
 
 void backscatter_send(PIO pio, uint sm, uint32_t *message, uint32_t len) {

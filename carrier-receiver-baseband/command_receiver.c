@@ -18,7 +18,7 @@ void printControlInfo(){
     uint32_t _current_DURATION = current_DURATION;
     mutex_exit(&setting_mutex);
     printf("The configuration can be changed using the following commands:\n   h (print this help message)\n   s (start receiving)\n   t (terminate/stop receiving)\n   c A B C D (configure receiver A=center, B=deviation, C=baud, D=bandswidth all in Hz)\n   b A B C (configure backscatter A=divider1, B=divider2, C=baud)\n\n");
-    printf("The current receiver configuration is:\n  c %u ", _current_CENTER); // somehow the macro sum doesn't print here
+    printf("The current receiver configuration is:\n  c %u ", _current_CENTER);
     printf("%u ", _current_DEVIATION);
     printf("%u ", _current_BAUDRATE);
     printf("%u\n\n", _current_MIN_RX_BW);

@@ -36,14 +36,14 @@
 #define RADIO_MOSI              19
 #define RADIO_SCK               18
 
-#define TX_DURATION            500 // send a packet every 250ms (when changing baud-rate, ensure that the TX delay is larger than the transmission time)
+#define TX_DURATION            250 // send a packet every 250ms (when changing baud-rate, ensure that the TX delay is larger than the transmission time)
 #define RECEIVER              2500 // define the receiver board either 2500 or 1352
 #define PIN_TX1                  6
 #define PIN_TX2                 27
 #define CLOCK_DIV0              20 // larger
 #define CLOCK_DIV1              18 // smaller
-#define DESIRED_BAUD        100000
-#define TWOANTENNAS          true
+#define DESIRED_BAUD         50000
+#define TWOANTENNAS           true
 
 #define CARRIER_FEQ     2450000000
 
@@ -78,16 +78,21 @@ void do_commands(){
                 case 'c':
                     RX_stop_listen();
                     setupReceiver();
+                    uint32_t conf_CENTER, conf_DEVIATION, conf_BAUDRATE, conf_MIN_RX_BW;
+                    conf_CENTER = set_frecuency_rx(cmd_event.value1);
+                    conf_DEVIATION = set_frequency_deviation_rx(cmd_event.value2);
+                    conf_BAUDRATE = set_datarate_rx(cmd_event.value3);
+                    conf_MIN_RX_BW = set_filter_bandwidth_rx(cmd_event.value4);
                     mutex_enter_blocking(&setting_mutex);
-                    current_CENTER=cmd_event.value1;
-                    current_DEVIATION=cmd_event.value2;
-                    current_BAUDRATE=cmd_event.value3;
-                    current_MIN_RX_BW=cmd_event.value4;
+                    current_CENTER=conf_CENTER;
+                    current_DEVIATION=conf_DEVIATION;
+                    current_BAUDRATE=conf_BAUDRATE;
+                    current_MIN_RX_BW=conf_MIN_RX_BW;
                     mutex_exit(&setting_mutex);
-                    set_frecuency_rx(cmd_event.value1);
-                    set_frequency_deviation_rx(cmd_event.value2);
-                    set_datarate_rx(cmd_event.value3);
-                    set_filter_bandwidth_rx(cmd_event.value4);
+                    printf("Used configuration: c %u ", conf_CENTER);
+                    printf("%u ", conf_DEVIATION);
+                    printf("%u ", conf_BAUDRATE);
+                    printf("%u\n", conf_MIN_RX_BW);
                     RX_start_listen();
                     break;
                 case 'b':
@@ -101,8 +106,12 @@ void do_commands(){
                     uint sm = 0;
                     struct backscatter_config backscatter_conf;
                     uint16_t instructionBuffer[32] = {0}; // maximal instruction size: 32
-                    backscatter_program_init(pio, sm, PIN_TX1, PIN_TX2, cmd_event.value1, cmd_event.value2, cmd_event.value3, &backscatter_conf, instructionBuffer, TWOANTENNAS);
-                    printf("Pio-state machine successfully changed.\n");
+                    if(backscatter_program_init(pio, sm, PIN_TX1, PIN_TX2, cmd_event.value1, cmd_event.value2, cmd_event.value3, &backscatter_conf, instructionBuffer, TWOANTENNAS)){
+                        printf("Pio-state machine successfully changed.\n");
+                    }else{
+                        printf("Issue encountered. The state-machine has not been updated.\n");
+                    }
+                    break;
                 default:
                     printf("Invalid command obtained.\n");
                     break;
@@ -207,8 +216,9 @@ int main() {
                 status = readPacket(rx_buffer);
                 printPacket(rx_buffer,status,time_us);
                 RX_start_listen();
+                sleep_ms(1);
                 rx_ready = true;
-            break;
+            //break;   // don't break still transmit next packet
             case no_evt:
                 // backscatter new packet if receiver is listening
                 if (rx_ready){
