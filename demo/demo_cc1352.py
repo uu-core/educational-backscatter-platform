@@ -72,7 +72,6 @@ def compute_ber(df, PACKET_LEN=15, REF_PAYLOAD=[0xa5], TX_RATE=0.5):
     error = pd.DataFrame(columns=['bit_error'], index=range(packets))
     # compute the number of packets supposed to been transmitted by the tag
     file_delay = df.timestamp[packets-1] - df.timestamp[0]
-    print(file_delay)
     file_delay = np.timedelta64(file_delay, "ms").astype(int) / 1000 # convert to seconds
     n_sent = file_delay * TX_RATE
     # compute the number of missing packets
@@ -127,7 +126,6 @@ def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
     # read the serial output
     while datetime.datetime.now() < t_end:
         rec = ser.readline().decode("utf-8")
-        print(rec)
         if validation_check(rec):
             # tmp = rec.split('|')
             time = datetime.datetime.now()
@@ -136,7 +134,9 @@ def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
             tmp = pd.Series({'timestamp': time, 'payload': payload, 'rss': rss})
             #df = df.append({'timestamp': time, 'payload': payload, 'rss': rss}, ignore_index=True)
             df = pd.concat([df, tmp.to_frame().T], ignore_index=True)
-            print(df)
+            print(f"{time} | {payload} | RSS {rss}")
+        else:
+            print(rec)
     # stop the reception
     ser.write("t\r".encode('utf-8'))
     # close the port
