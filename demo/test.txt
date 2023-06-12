@@ -1,11 +1,11 @@
 start listening
-00:00:00.000 | 0f 00 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -62 CRC error 
-00:00:01.000 | 0f 01 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error 
-00:00:02.000 | 0f 02 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error 
-00:00:03.000 | 0f 03 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
-00:00:04.000 | 0f 04 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
-00:00:05.000 | 0f 05 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
-00:00:06.000 | 01 01 a5 | -61 CRC error
-00:00:07.000 | 0f 07 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
-00:00:08.000 | 0f 08 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
-00:00:09.000 | 0f 09 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
+00:00:00.000 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -62 CRC error 
+00:00:00.500 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error 
+00:00:01.000 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error 
+00:00:01.500 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
+00:00:02.000 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
+00:00:02.500 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
+00:00:03.000 | 01 a5 | -61 CRC error
+00:00:03.500 | 10 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a6 | -61 CRC error
+00:00:04.000 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error
+00:00:04.500 | 0f a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 a5 | -61 CRC error

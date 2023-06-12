@@ -32,7 +32,7 @@ bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instru
     uint16_t OPT_SIDE_1   = 0x0000;
     uint16_t OPT_SIDE_0   = 0x0000;
     if (twoAntennas){
-        MAX_ASMDELAY = 0x0008;     //   8 
+        MAX_ASMDELAY = 0x0008;     //   8
         OPT_SIDE_1   = 0x1800;
         OPT_SIDE_0   = 0x1000;
     }
@@ -58,32 +58,32 @@ bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instru
     instructionBuffer[0] = ASM_SET_PINS | OPT_SIDE_1 | 1;           //  0: set    pins, 1         side 1
     instructionBuffer[1] = ASM_OUT | (ASM_ISR_REG << 5);            //  1: out    isr, 32   (NOTE: 32=0)
     instructionBuffer[2] = ASM_OUT | (ASM_Y_REG   << 5);            //  2: out    y, 32     (NOTE: 32=0)
-    instructionBuffer[3] = ASM_OUT | (ASM_X_REG   << 5) |  1;       //  3: out    x, 1   
+    instructionBuffer[3] = ASM_OUT | (ASM_X_REG   << 5) |  1;       //  3: out    x, 1
     instructionBuffer[4] = ASM_JMP_NOTX | (0x1F & send_0_label);    //  4: jmp    !x, send_0_label
     /*       symbol 1      */
-    instructionBuffer[5] = ASM_MOV | (ASM_X_REG << 5) | ASM_Y_REG;  //  5: mov    x, y                  
+    instructionBuffer[5] = ASM_MOV | (ASM_X_REG << 5) | ASM_Y_REG;  //  5: mov    x, y
     uint8_t length = 6;
     // full periods
-    repeat(instructionBuffer, d1/2,     ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);   //    6: set    pins, 1         side 1 [delay] 
-    repeat(instructionBuffer, d1/2 - 1, ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);   //  ...: set    pins, 0         side 0 [delay] 
+    repeat(instructionBuffer, d1/2,     ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);   //    6: set    pins, 1         side 1 [delay]
+    repeat(instructionBuffer, d1/2 - 1, ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);   //  ...: set    pins, 0         side 0 [delay]
     instructionBuffer[length] = ASM_JMP_XMM | (0x1F & loop_1_label);                             //  ...: jmp    x--, loop_1_label
     length++;
     // remaining period to fill symbol time
-    repeat(instructionBuffer,                          tmp1, ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY); //  ...: set    pins, 1         side 1 [delay] 
-    repeat(instructionBuffer, max(0,lastPeriodCycles1-tmp1), ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY); //  ...: set    pins, 0         side 0 [delay] 
+    repeat(instructionBuffer,                          tmp1, ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY); //  ...: set    pins, 1         side 1 [delay]
+    repeat(instructionBuffer, max(0,lastPeriodCycles1-tmp1), ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY); //  ...: set    pins, 0         side 0 [delay]
     instructionBuffer[length] = ASM_JMP | get_symbol_label;               // ...: jmp    get_symbol_label
     length++;
     /*       symbol 0       */
-    instructionBuffer[length] = ASM_MOV | (ASM_X_REG << 5) | ASM_ISR_REG, // ...: mov    x, isr  
-    length++; 
+    instructionBuffer[length] = ASM_MOV | (ASM_X_REG << 5) | ASM_ISR_REG, // ...: mov    x, isr
+    length++;
     // full periods
-    repeat(instructionBuffer, d0/2,     ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);    // ...: set    pins, 1         side 1 [delay_part] 
-    repeat(instructionBuffer, d0/2 - 1, ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);    // ...: set    pins, 0         side 0 [delay_part] 
+    repeat(instructionBuffer, d0/2,     ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);    // ...: set    pins, 1         side 1 [delay_part]
+    repeat(instructionBuffer, d0/2 - 1, ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);    // ...: set    pins, 0         side 0 [delay_part]
     instructionBuffer[length] = ASM_JMP_XMM | (0x1F & loop_0_label);      //  ...: jmp    x--, loop_0_label
     length++;
     // remaining period to fill symbol time
-    repeat(instructionBuffer,                          tmp0, ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);  //  ...: set    pins, 1         side 1 [delay_part] 
-    repeat(instructionBuffer, max(0,lastPeriodCycles0-tmp0), ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);  //  ...: set    pins, 0         side 0 [delay_part] 
+    repeat(instructionBuffer,                          tmp0, ASM_SET_PINS | OPT_SIDE_1 | 1, &length, MAX_ASMDELAY);  //  ...: set    pins, 1         side 1 [delay_part]
+    repeat(instructionBuffer, max(0,lastPeriodCycles0-tmp0), ASM_SET_PINS | OPT_SIDE_0 | 0, &length, MAX_ASMDELAY);  //  ...: set    pins, 0         side 0 [delay_part]
     instructionBuffer[length] = ASM_JMP | get_symbol_label; // ...: jmp    get_symbol_label
 
     // configure program origin and length
@@ -93,8 +93,8 @@ bool generatePIOprogram(uint16_t d0,uint16_t d1, uint32_t baud, uint16_t* instru
     return true;
 }
 
-/* 
-    - based on d0/d1/baud, the modulation parameters will be computed and returned in the struct backscatter_config 
+/*
+    - based on d0/d1/baud, the modulation parameters will be computed and returned in the struct backscatter_config
     - pin2 is ignored if twoAntennas==false
 */
 bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d0, uint16_t d1, uint32_t baud, struct backscatter_config *config, uint16_t *instructionBuffer, bool twoAntennas){
@@ -131,11 +131,11 @@ bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d
     pio_sm_set_consecutive_pindirs(pio, sm, pin1, 1, true);
     if(twoAntennas){
         pio_gpio_init(pio, pin2);
-        pio_sm_set_consecutive_pindirs(pio, sm, pin2, 1, true);    
+        pio_sm_set_consecutive_pindirs(pio, sm, pin2, 1, true);
     }
     // setup default state-machine config
     pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset, offset + backscatter_program.length-1); 
+    sm_config_set_wrap(&c, offset, offset + backscatter_program.length-1);
     // setup specific state-machine config
     sm_config_set_set_pins(&c, pin1, 1);
     if(twoAntennas){
@@ -158,7 +158,7 @@ bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d
     config->center_offset = round(fcenter);
     config->deviation   = round(fdeviation);
     config->minRxBw     = round((baud + 2*fdeviation));
-    
+
     if (fdeviation > 380000){
         printf("WARNING: the deviation is too large for the CC2500\n");
     }
@@ -169,7 +169,7 @@ bool backscatter_program_init(PIO pio, uint sm, uint pin1, uint pin2, uint16_t d
         printf("WARNING: symbol 0 has been assigned to larger frequncy than symbol 1\n");
     }
 
-    printf("Computed baseband settings: \n- baudrate: %d\n- Center offset: %d\n- deviation: %d\n- RX Bandwidth: %d\n", config->baudrate, config->center_offset, config->deviation, config->minRxBw);
+    printf("Computed baseband settings: - baudrate: %d - Center offset: %d - deviation: %d - RX Bandwidth: %d\n", config->baudrate, config->center_offset, config->deviation, config->minRxBw);
     return true;
 }
 

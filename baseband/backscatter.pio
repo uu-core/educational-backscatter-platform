@@ -1,6 +1,6 @@
 ;
 ; Automatically generated using "generate-backscatter-pio.py"
-; with the command: "python generate-backscatter-pio.py 28 24 100000 backscatter.pio --twoAntennas"
+; with the command: "python generate-backscatter-pio.py 54 52 50000 backscatter.pio --twoAntennas"
 ;
 ; Backscatter PIO
 ; Configured for two antenns
@@ -14,18 +14,18 @@
 ; configered for 125 MHz clock
 
 ; --- backscatter settings ---
-; frequency 0 shift: 4.464 MHz       (1 period = 28 cycles @ 125 MHz clock)
-; frequency 1 shift: 5.208 Mhz       (1 period = 24 cycles @ 125 MHz clock)
-; center frequency shift: 4.836 MHz
-; deviation from center : 372.02 kHz
-; baud-rate 100.00 kBaud (1250.0 instructions per symbol)
-; occupied bandwith: 844.05 kHz
+; frequency 0 shift: 2.315 MHz       (1 period = 54 cycles @ 125 MHz clock)
+; frequency 1 shift: 2.404 Mhz       (1 period = 52 cycles @ 125 MHz clock)
+; center frequency shift: 2.359 MHz
+; deviation from center : 44.52 kHz
+; baud-rate 50.00 kBaud (2500.0 instructions per symbol)
+; occupied bandwith: 139.03 kHz
 
 
-; parameter 1:  b = clock-frequency/baud-rate (e.g. 1250.0 for 100.00 kBaud @ 125 MHz clock)   // number of clock cycles per symbol
+; parameter 1:  b = clock-frequency/baud-rate (e.g. 2500.0 for 50.00 kBaud @ 125 MHz clock)   // number of clock cycles per symbol
 ; parameter 2:  w = 4 (wasted cycles per symbol: OUT -> JMP -> MOV -> ... -> JMP )            // fixed wasted cycles per symbol
-; parameter 3: d0 = clock-frequency/shift-frequency-0 (e.g. 28 for 4.464 MHz @ 125 MHz clock) // must be an _even_ number
-; parameter 4: d1 = clock-frequency/shift-frequency-1 (e.g. 24 for 5.208 Mhz @ 125 MHz clock) // must be an _even_ number
+; parameter 3: d0 = clock-frequency/shift-frequency-0 (e.g. 54 for 2.315 MHz @ 125 MHz clock) // must be an _even_ number
+; parameter 4: d1 = clock-frequency/shift-frequency-1 (e.g. 52 for 2.404 Mhz @ 125 MHz clock) // must be an _even_ number
 
 
 ; interface: 
@@ -43,40 +43,44 @@ get_symbol:
     send_1:
         MOV x  y                       ; load baud 1 config
         loop_1:
-            SET pins 1  side 1  [7]    ; for 5208.3 kHz - 12 cycles high
-            SET pins 1  side 1  [3]    ; for 5208.3 kHz - 12 cycles high
-            SET pins 0  side 0  [7]    ; for 5208.3 kHz - 12 cycles low
-            SET pins 0  side 0  [2]    ; for 5208.3 kHz - 12 cycles low
+            SET pins 1  side 1  [7]    ; for 2403.8 kHz - 26 cycles high
+            SET pins 1  side 1  [7]    ; for 2403.8 kHz - 26 cycles high
+            SET pins 1  side 1  [7]    ; for 2403.8 kHz - 26 cycles high
+            SET pins 1  side 1  [1]    ; for 2403.8 kHz - 26 cycles high
+            SET pins 0  side 0  [7]    ; for 2403.8 kHz - 26 cycles low
+            SET pins 0  side 0  [7]    ; for 2403.8 kHz - 26 cycles low
+            SET pins 0  side 0  [7]    ; for 2403.8 kHz - 26 cycles low
+            SET pins 0  side 0  [0]    ; for 2403.8 kHz - 26 cycles low
             JMP x-- loop_1             ; 1 cycle  
         ; to avoid a drift from imprecise baud-timing: stop the last period on time
-        ; the remaining cycles are:  (b - w) % d1 = (1250 - 4) % 24 => 22 cycles left to spend 
-        SET pins 1  side 1  [7]        ; spend 12 cycles of last period on high
-        SET pins 1  side 1  [3]        ; spend 12 cycles of last period on high
-        SET pins 0  side 0  [7]        ; spend 10 cycles of last period on low
-        SET pins 0  side 0  [1]        ; spend 10 cycles of last period on low
+        ; the remaining cycles are:  (b - w) % d1 = (2500 - 4) % 52 => 0 cycles left to spend 
         JMP get_symbol                 ; 
     send_0:
         MOV x isr                      ; load baud 0 config
         loop_0:
-            SET pins 1  side 1  [7]    ; for 4464.3 kHz - 14 cycles high
-            SET pins 1  side 1  [5]    ; for 4464.3 kHz - 14 cycles high
-            SET pins 0  side 0  [7]    ; for 4464.3 kHz - 14 cycles low
-            SET pins 0  side 0  [4]    ; for 4464.3 kHz - 14 cycles low
+            SET pins 1  side 1  [7]    ; for 2314.8 kHz - 27 cycles high
+            SET pins 1  side 1  [7]    ; for 2314.8 kHz - 27 cycles high
+            SET pins 1  side 1  [7]    ; for 2314.8 kHz - 27 cycles high
+            SET pins 1  side 1  [2]    ; for 2314.8 kHz - 27 cycles high
+            SET pins 0  side 0  [7]    ; for 2314.8 kHz - 27 cycles low
+            SET pins 0  side 0  [7]    ; for 2314.8 kHz - 27 cycles low
+            SET pins 0  side 0  [7]    ; for 2314.8 kHz - 27 cycles low
+            SET pins 0  side 0  [1]    ; for 2314.8 kHz - 27 cycles low
             JMP x-- loop_0             ; 1 cycle  
         ; to avoid a drift from imprecise baud-timing: stop the last period on time
-        ; the remaining cycles are:  (b - w) % d0 = (1250 - 4) % 28 => 14 cycles left to spend 
-        SET pins 1  side 1  [7]        ; spend 14 cycles of last period on high
-        SET pins 1  side 1  [5]        ; spend 14 cycles of last period on high
+        ; the remaining cycles are:  (b - w) % d0 = (2500 - 4) % 54 => 12 cycles left to spend 
+        SET pins 1  side 1  [7]        ; spend 12 cycles of last period on high
+        SET pins 1  side 1  [3]        ; spend 12 cycles of last period on high
         JMP get_symbol                 ; 
 
 % c-sdk {
 #include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #define min(x, y) (((x) < (y)) ? (x) : (y))
-#define PIO_BAUDRATE 100000
-#define PIO_CENTER_OFFSET 4836310
-#define PIO_DEVIATION 372024
-#define PIO_MIN_RX_BW 844048
+#define PIO_BAUDRATE 50000
+#define PIO_CENTER_OFFSET 2359330
+#define PIO_DEVIATION 44516
+#define PIO_MIN_RX_BW 139031
 
 static inline void backscatter_program_init(PIO pio, uint sm, uint offset, uint pin1, uint pin2){
    pio_gpio_init(pio, pin1);
@@ -90,8 +94,8 @@ static inline void backscatter_program_init(PIO pio, uint sm, uint offset, uint 
    sm_config_set_out_shift(&c, false, true, 32);  // OUT shifts to left (MSB first), autopull after every 32 bit
    pio_sm_init(pio, sm, offset, &c);
    pio_sm_set_enabled(pio, sm, true);
-   pio_sm_put_blocking(pio, sm, 43); // floor((b - w) / d0) - 1 = floor((1250 - 4)/28) - 1   // -1 is requried since JMP 0-- is still true
-   pio_sm_put_blocking(pio, sm, 50); // floor((b - w) / d1) - 1 = floor((1250 - 4)/24) - 1   // -1 is required since JMP 0-- is still true
+   pio_sm_put_blocking(pio, sm, 45); // floor((b - w) / d0) - 1 = floor((2500 - 4)/54) - 1   // -1 is requried since JMP 0-- is still true
+   pio_sm_put_blocking(pio, sm, 47); // floor((b - w) / d1) - 1 = floor((2500 - 4)/52) - 1   // -1 is required since JMP 0-- is still true
 }
 
 

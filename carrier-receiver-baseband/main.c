@@ -15,7 +15,7 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "pico/sync.h"
-#include "pico/multicore.h" 
+#include "pico/multicore.h"
 
 #include "pico/util/queue.h"
 #include "pico/binary_info.h"
@@ -43,7 +43,7 @@
 #define CLOCK_DIV0              20 // larger
 #define CLOCK_DIV1              18 // smaller
 #define DESIRED_BAUD         50000
-#define TWOANTENNAS           true
+#define TWOANTENNAS           false
 
 #define CARRIER_FEQ     2450000000
 
@@ -135,8 +135,8 @@ int main() {
     current_BAUD = PIO_BAUDRATE;
     current_DURATION = TX_DURATION;
     mutex_exit(&setting_mutex);
-    multicore_reset_core1(); 
-    multicore_launch_core1(readInput_core1); 
+    multicore_reset_core1();
+    multicore_launch_core1(readInput_core1);
 
     /* SPI setup */
     spi_init(RADIO_SPI, 5 * 1000000); // SPI0 at 5MHz.
@@ -205,6 +205,9 @@ int main() {
 
         do_commands();
         evt = get_event();
+        while(evt==rx_assert_evt) {
+          evt = get_event();
+        }
         switch(evt){
             case rx_assert_evt:
                 // started receiving
@@ -243,7 +246,7 @@ int main() {
                     backscatter_send(pio,sm,buffer,buffer_size(PAYLOADSIZE, HEADER_LEN));
                     sleep_ms(ceil((((double) buffer_size(PAYLOADSIZE, HEADER_LEN))*8000.0)/((double) DESIRED_BAUD))+3); // wait transmission duration (+3ms)
                     stopCarrier();
-                    /* increase seq number*/ 
+                    /* increase seq number*/
                     seq++;
                 }
             break;
