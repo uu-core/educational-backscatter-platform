@@ -25,7 +25,6 @@ import re
 import serial
 from functools import partial
 import random
-from time import sleep
 
 global UPDATE_TIME, TX_RATE, PORT
 TX_RATE = 4 # # packets per second
@@ -122,13 +121,15 @@ def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
     # read the serial output
     while datetime.datetime.now() < t_end:
         rec = ser.readline().decode("utf-8")
-        print(rec)
         if validation_check(rec):
             tmp = rec.split('|')
             time = datetime.datetime.strptime(tmp[0].rstrip(), "%H:%M:%S.%f")
             payload = tmp[1].strip()
             rss = int(tmp[2].split()[0])
             df = df.append({'timestamp': time, 'payload': payload, 'rss': rss}, ignore_index=True)
+            print(f"{datetime.datetime.now()} | {payload} | RSS {rss}")
+        else:
+            print(rec)
     # stop the reception
     ser.write("t\r".encode('utf-8'))
     # close the port
@@ -144,7 +145,6 @@ def update(frame, fig, art, timeline, ber_history, ser, start_timestamp):
     # update the figure
     ber_history.append(file_ber*100)
     time_delta = t_end-start_timestamp
-    # print(time_delta.seconds)
     timeline.append(time_delta.seconds)
     # only show last N data points
     if len(timeline) > 10:
@@ -191,7 +191,7 @@ def main():
     ber_history = [100]
     timeline  = [0]
     with serial.Serial(PORT, 115200, timeout=UPDATE_TIME) as ser:
-        fig = plt.figure(figsize=(6, 3))
+        fig = plt.figure(figsize=(10, 5))
         ax = fig.add_subplot(1,1,1)
         # configure the figure display
         ax.grid()
@@ -201,7 +201,7 @@ def main():
         ax.tick_params(labelsize=13)
 
         ln, = plt.plot(timeline, ber_history, marker='o', markersize=6, color='black')
-        animation = FuncAnimation(fig, partial(update, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, ser=ser, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 500))
+        animation = FuncAnimation(fig, partial(update, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, ser=ser, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 500), cache_frame_data=False)
     # animation = FuncAnimation(fig, partial(update_test, fig=fig, art=ln, timeline=timeline, ber_history=ber_history, start_timestamp=start_timestamp), interval=(1000*UPDATE_TIME + 1000))
     plt.show()
 
